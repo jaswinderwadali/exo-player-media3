@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Media3 Sample</string>
+    <string name="title_activity_audio_recorder">AudioRecorder</string>
+    <string name="title_activity_av">AvActivity</string>
 </resources>

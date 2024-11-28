@@ -2,9 +2,11 @@ package media3.sample
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,10 +21,18 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultHttpDataSource.*
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import media3.sample.ui.theme.Media3SampleTheme
+import java.util.TimeZone
+
+private val timezoneOffset = TimeZone.getDefault().getOffset(System.currentTimeMillis())
 
 class MainActivity : ComponentActivity() {
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,7 +50,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Greeting(modifier: Modifier = Modifier) {
     // State to hold the URL entered by the user
-    val urlState = remember { mutableStateOf("https://dev.bot.touchkin.com/test2") }
+    val urlState = remember { mutableStateOf("https://dev.bot.touchkin.com/aaos/tts/3TazS1NZvcfGZE1JdoOUTJqPQfc%3D") }
     // State to track buffering progress
     var isBuffering by remember { mutableStateOf(false) }
     // State to track time difference (in milliseconds)
@@ -73,7 +83,9 @@ fun Greeting(modifier: Modifier = Modifier) {
                 value = urlState.value,
                 onValueChange = { urlState.value = it },
                 label = { Text("Enter WAV URL") },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             )
 
             // Button to play the media from the entered URL
@@ -85,9 +97,11 @@ fun Greeting(modifier: Modifier = Modifier) {
                         playButtonClickTime = System.currentTimeMillis() // Capture the time when the button is clicked
                         // If player is null, create a new one
                         if (player == null) {
-                            player = ExoPlayer.Builder(context).build()
+                            player = createExoplayer(
+                                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3M2Q5YWRmMTZlOTZlYTMyN2FkNDg0NyIsImltZWkiOiI2MDY5NjBiMTQwMjFhNGZlMWNkIiwiYXBwIjoic2RrIiwiaWF0IjoxNzMyMDkwNTkxfQ.iNN_K9k_4oTOQd-ijPbFYSqDyC3YJtSP-xb1mGwwzZY"
+                                , context)
                         }
-                        play(context, url, player!!, { isBuffering = true }, { isBuffering = false }, { timeDifference = System.currentTimeMillis() - playButtonClickTime; isPlayingStarted = true })
+                        play( url, player!!, { isBuffering = true }, { isBuffering = false }, { timeDifference = System.currentTimeMillis() - playButtonClickTime; isPlayingStarted = true })
                     }
                 }
             ) {
@@ -96,7 +110,9 @@ fun Greeting(modifier: Modifier = Modifier) {
 
             // Button to stop the media
             Button(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
                 onClick = {
                     player?.stop() // Stop the player
                     player?.seekTo(0) // Optionally seek to the start if needed
@@ -121,14 +137,34 @@ fun Greeting(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(UnstableApi::class)
+fun createExoplayer(token: String?, context: Context): ExoPlayer {
+    val httpDataSourceFactory = Factory().setAllowCrossProtocolRedirects(true)
+    val dataSourceFactory = DataSource.Factory {
+        httpDataSourceFactory.createDataSource().apply {
+            setRequestProperty("Authorization", "Bearer $token")
+//            setRequestProperty("timezone-offset", timezoneOffset.toString())
+//            setRequestProperty("app-version", "1")
+//            setRequestProperty("User-Agent", "bot.wysa.cars/1 (okhttp)")
+
+        }
+    }
+
+    return ExoPlayer.Builder(context).setMediaSourceFactory(
+        DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+    ).build()
+}
+
+
 fun play(
-    context: Context,
     url: String,
     player: ExoPlayer,
     onBufferingStarted: () -> Unit,
     onBufferingEnded: () -> Unit,
     onPlayingStarted: () -> Unit
 ) {
+
+
     // Setup the media item
     val mediaItem = MediaItem.fromUri(url)
     player.setMediaItem(mediaItem)
@@ -145,6 +181,7 @@ fun play(
                     onPlayingStarted() // Track when playback actually starts
                 }
                 Player.STATE_ENDED -> {
+                    Log.d("", "onPlaybackStateChanged: Eneded");
                     // Handle media end if needed
                 }
             }
